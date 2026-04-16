@@ -1,9 +1,36 @@
 const express = require('express');
 const QRCode = require('qrcode');
+const os = require('os');
 const { getDb } = require('../database');
 const { authMiddleware } = require('../auth');
 
 const router = express.Router();
+
+// Returns the best base URL for QR codes.
+// - If BASE_URL is set in .env, use that (works for any deployment).
+// - If the request came in on localhost (dev), swap to the machine's LAN IP
+//   so phones on the same Wi-Fi can actually open the link.
+// - Otherwise (production with a real domain) use the Host header as-is.
+function getBaseUrl(req) {
+  if (process.env.BASE_URL) return process.env.BASE_URL.replace(/\/$/, '');
+
+  const host = req.get('host') || '';
+  const isLocal = host.startsWith('localhost') || host.startsWith('127.0.0.1');
+
+  if (isLocal) {
+    const port = host.split(':')[1] || '3000';
+    const nets = os.networkInterfaces();
+    for (const name of Object.keys(nets)) {
+      for (const iface of nets[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          return `${req.protocol}://${iface.address}:${port}`;
+        }
+      }
+    }
+  }
+
+  return `${req.protocol}://${host}`;
+}
 
 router.get('/menu/:slug', (req, res) => {
   const db = getDb();
@@ -21,9 +48,11 @@ router.get('/menu/:slug', (req, res) => {
 
 router.get('/qr/:slug', async (req, res) => {
   try {
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const menuUrl = `${baseUrl}/menu/${req.params.slug}`;
-    const qrDataUrl = await QRCode.toDataURL(menuUrl, { width: 300, margin: 2, color: { dark: '#1A1410', light: '#FFFDF9' } });
+    const menuUrl = `${getBaseUrl(req)}/menu/${req.params.slug}`;
+    const size = Math.min(Math.max(parseInt(req.query.size) || 300, 100), 1000);
+    const dark = `#${(req.query.dark || '1A1410').replace('#', '')}`;
+    const light = `#${(req.query.light || 'FFFDF9').replace('#', '')}`;
+    const qrDataUrl = await QRCode.toDataURL(menuUrl, { width: size, margin: 2, color: { dark, light } });
     res.json({ qr: qrDataUrl, url: menuUrl });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

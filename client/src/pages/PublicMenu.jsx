@@ -8,7 +8,7 @@ export default function PublicMenu() {
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    fetch(`/api/public/menu/${slug}`)
+    fetch(`/api/menu/${slug}`)
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(data => {
         setMenu(data.menu);

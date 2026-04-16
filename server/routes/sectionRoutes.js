@@ -37,7 +37,7 @@ router.delete('/:id', authMiddleware, (req, res) => {
   try {
     const section = db.prepare('SELECT s.* FROM sections s JOIN menus m ON s.menu_id = m.id WHERE s.id = ? AND m.user_id = ?').get(req.params.id, req.user.id);
     if (!section) return res.status(404).json({ error: 'Section not found' });
-    db.prepare('DELETE FROM sections WHERE id = ?').run(section.id);
+    db.prepare('DELETE FROM sections WHERE  id = ?').run(section.id);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
   finally { db.close(); }
