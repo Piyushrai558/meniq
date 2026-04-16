@@ -1,10 +1,16 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const fs = require('fs');
 
 const DB_PATH = process.env.DB_PATH || './db/menuqr.db';
 
 function getDb() {
-  const db = new Database(path.resolve(__dirname, '..', DB_PATH));
+  const fullPath = path.resolve(__dirname, '..', DB_PATH);
+
+  // ensure folder exists
+  fs.mkdirSync(path.dirname(fullPath), { recursive: true });
+
+  const db = new Database(fullPath);
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   return db;
@@ -12,6 +18,7 @@ function getDb() {
 
 function initDb() {
   const db = getDb();
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,6 +28,7 @@ function initDb() {
       restaurant_name TEXT DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
     CREATE TABLE IF NOT EXISTS menus (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
@@ -35,6 +43,7 @@ function initDb() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
+
     CREATE TABLE IF NOT EXISTS sections (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       menu_id INTEGER NOT NULL,
@@ -43,6 +52,7 @@ function initDb() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (menu_id) REFERENCES menus(id) ON DELETE CASCADE
     );
+
     CREATE TABLE IF NOT EXISTS items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       section_id INTEGER NOT NULL,
@@ -58,6 +68,7 @@ function initDb() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (section_id) REFERENCES sections(id) ON DELETE CASCADE
     );
+
     CREATE TABLE IF NOT EXISTS analytics (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       menu_id INTEGER NOT NULL,
@@ -69,6 +80,7 @@ function initDb() {
       FOREIGN KEY (menu_id) REFERENCES menus(id) ON DELETE CASCADE
     );
   `);
+
   db.close();
   console.log('✅ Database initialized');
 }

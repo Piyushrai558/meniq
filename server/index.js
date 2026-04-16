@@ -18,22 +18,24 @@ app.use('/api/menus', require('./routes/menuRoutes'));
 app.use('/api/sections', require('./routes/sectionRoutes'));
 app.use('/api', require('./routes/publicRoutes'));
 
-// Serve React build
-const clientBuild = path.join(__dirname, '..', 'client', 'dist');
-app.use(express.static(clientBuild));
+// ✅ only serve React build in production
+if (process.env.NODE_ENV === 'production') {
+  const clientBuild = path.join(__dirname, '..', 'client', 'dist');
 
-// SPA fallback — let React Router handle all other routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(clientBuild, 'index.html'));
-});
+  app.use(express.static(clientBuild));
+
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuild, 'index.html'));
+  });
+}
 
 app.listen(PORT, () => {
   console.log(`
 ╔══════════════════════════════════════════╗
 ║         🍽  MenuQR Server Running        ║
 ╠══════════════════════════════════════════╣
-║  Local:   http://localhost:${PORT}          ║
-║  API:     http://localhost:${PORT}/api      ║
+║  Local:   http://localhost:${PORT}          
+║  API:     http://localhost:${PORT}/api      
 ╚══════════════════════════════════════════╝
-  `);
+`);
 });

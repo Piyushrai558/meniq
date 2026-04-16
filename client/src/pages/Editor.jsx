@@ -31,7 +31,7 @@ export default function Editor() {
       }
       // Load QR
       try {
-        const qr = await api('GET', `/public/qr/${data.menu.slug}`);
+        const qr = await api('GET', `/qr/${data.menu.slug}`);
         setQrData(qr);
       } catch (e) {}
     } catch (err) {
@@ -267,6 +267,21 @@ export default function Editor() {
               <div className="qr-label">Your QR code</div>
               <div><img src={qrData.qr} alt="QR Code" style={{ borderRadius: 'var(--radius-sm)', maxWidth: 160 }} /></div>
               <div className="qr-url">{qrData.url}</div>
+              <button
+                className="btn-sm btn-sm-accent"
+                style={{ marginTop: 12, width: '100%' }}
+                onClick={() => {
+                  const a = document.createElement('a');
+                  a.href = qrData.qr;
+                  a.download = `${(menu.restaurant_name || menu.name || 'menu').toLowerCase().replace(/\s+/g, '-')}-qr.png`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  ToastContext.show('QR code downloaded!');
+                }}
+              >
+                ↓ Download QR
+              </button>
             </div>
           )}
         </div>

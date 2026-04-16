@@ -283,6 +283,27 @@ a { text-decoration: none; color: inherit; }
 .pub-footer p { font-size: 12px; color: var(--ink-faint); margin-bottom: 8px; }
 .pub-footer a { font-size: 13px; color: var(--accent); font-weight: 500; }
 
+/* ══════════ QR GENERATOR MODAL ══════════ */
+.qr-gen h3 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+.qr-gen > p { font-size: 14px; color: var(--ink-faint); margin-bottom: 24px; }
+.qr-gen-preview { width: 100%; display: flex; align-items: center; justify-content: center; background: var(--cream); border-radius: var(--radius); min-height: 220px; margin-bottom: 16px; border: 1px solid var(--border); }
+.qr-gen-img { max-width: 280px; max-height: 280px; border-radius: var(--radius-sm); display: block; }
+.qr-gen-loading { display: flex; align-items: center; justify-content: center; padding: 40px; }
+.qr-gen-url { display: flex; align-items: center; gap: 10px; background: var(--cream); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 20px; }
+.qr-gen-url-text { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink-faint); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qr-gen-copy-btn { background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-weight: 500; cursor: pointer; flex-shrink: 0; transition: background 0.2s; font-family: 'DM Sans', sans-serif; }
+.qr-gen-copy-btn:hover { background: var(--accent-dark); }
+.qr-gen-options { display: flex; gap: 24px; margin-bottom: 8px; flex-wrap: wrap; }
+.qr-gen-group { display: flex; flex-direction: column; gap: 8px; }
+.qr-gen-group-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); }
+.qr-gen-presets { display: flex; gap: 8px; }
+.qr-preset-btn { width: 36px; height: 36px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; cursor: pointer; border: 2px solid transparent; transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
+.qr-preset-btn.active { border-color: var(--accent); transform: scale(1.1); box-shadow: var(--shadow); }
+.qr-size-btns { display: flex; gap: 8px; }
+.qr-size-btn { width: 44px; height: 36px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; cursor: pointer; background: transparent; border: 1px solid var(--border-strong); color: var(--ink-muted); transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
+.qr-size-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.qr-size-btn:hover:not(.active) { background: var(--cream); }
+
 /* ══════════ MODAL ══════════ */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(26,20,16,0.5); z-index: 1000; align-items: center; justify-content: center; }
 .modal-overlay.open { display: flex; }
