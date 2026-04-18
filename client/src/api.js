@@ -1,15 +1,15 @@
 const API_BASE = '/api';
 
 function getToken() {
-  return localStorage.getItem('menuqr_token') || '';
+  return localStorage.getItem('menuify_token') || '';
 }
 
 function setToken(token) {
-  localStorage.setItem('menuqr_token', token);
+  localStorage.setItem('menuify_token', token);
 }
 
 function clearToken() {
-  localStorage.removeItem('menuqr_token');
+  localStorage.removeItem('menuify_token');
 }
 
 async function api(method, path, body) {

@@ -1,8 +1,8 @@
 {
-  "name": "menuqr-fullstack",
+  "name": "menuify-fullstack",
   "version": "1.0.0",
   "private": true,
-  "description": "MenuQR — Digital Menus for Restaurants (React + Node.js + SQLite)",
+  "description": "Menuify — Digital Menus for Restaurants (React + Node.js + SQLite)",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "node server/index.js",

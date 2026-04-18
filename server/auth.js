@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const SECRET = process.env.JWT_SECRET || 'menuqr-secret';
+const SECRET = process.env.JWT_SECRET || 'menuify-secret';
 
 function generateToken(user) {
   return jwt.sign({ id: user.id, email: user.email }, SECRET, { expiresIn: '7d' });

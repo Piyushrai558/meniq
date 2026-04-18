@@ -13,7 +13,7 @@ function getClient() {
 // • Without a verified domain → use the Resend sandbox address (works for testing)
 // • With a verified domain    → use your own address e.g. noreply@menuqr.in
 function fromAddress() {
-  return process.env.EMAIL_FROM || 'MenuQR <onboarding@resend.dev>';
+  return process.env.EMAIL_FROM || 'Menuify <onboarding@resend.dev>';
 }
 
 // ─── Internal send helper ─────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ async function send({ to, subject, html, _devLog }) {
 const footer = `
   <div style="margin-top:32px;padding-top:16px;border-top:1px solid #eee;
               font-size:12px;color:#aaa;font-family:sans-serif;">
-    MenuQR — Digital menus for modern restaurants
+    Menuify — Digital menus for modern restaurants
   </div>`;
 
 // ─── Email functions ──────────────────────────────────────────────────────────
@@ -67,11 +67,11 @@ async function sendVerificationEmail(email, name, token) {
   const link = `${process.env.FRONTEND_URL}/auth?mode=verify&token=${token}`;
   await send({
     to:      email,
-    subject: 'Verify your MenuQR account',
+    subject: 'Verify your Menuify account',
     _devLog: `Email verification link → ${link}`,
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;">
-        <h2 style="color:#C8622A;margin-bottom:8px;">Welcome to MenuQR, ${name}! 🍽</h2>
+        <h2 style="color:#C8622A;margin-bottom:8px;">Welcome to Menuify, ${name}! 🍽</h2>
         <p style="color:#444;line-height:1.6;">
           Please verify your email address to activate your account.
         </p>
@@ -121,13 +121,13 @@ async function sendPasswordResetEmail(email, token) {
   const link = `${process.env.FRONTEND_URL}/auth?mode=reset&token=${token}`;
   await send({
     to:      email,
-    subject: 'Reset your MenuQR password',
+    subject: 'Reset your Menuify password',
     _devLog: `Password reset link → ${link}`,
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;">
         <h2 style="color:#C8622A;margin-bottom:8px;">Reset your password</h2>
         <p style="color:#444;line-height:1.6;">
-          We received a request to reset the password for your MenuQR account.
+          We received a request to reset the password for your Menuify account.
         </p>
         <a href="${link}"
            style="display:inline-block;background:#C8622A;color:#fff;padding:13px 28px;

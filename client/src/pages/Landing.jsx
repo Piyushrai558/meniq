@@ -14,7 +14,7 @@ export default function Landing() {
     <div className="page-landing">
       {/* NAV */}
       <nav className="nav">
-        <div className="nav-logo"><span className="nav-logo-dot" /> MenuQR</div>
+        <div className="nav-logo"><span className="nav-logo-dot" /> Menuify</div>
         <div className="nav-links">
           <a href="#features">Features</a>
           <a href="#pricing">Pricing</a>
@@ -81,16 +81,16 @@ export default function Landing() {
         <div className="section-label">Pricing</div>
         <h2 className="section-title">Simple, honest pricing.</h2>
         <div className="pricing-cards">
-          <PricingCard name="Free" price="₹0" period="forever" features={['1 menu, up to 30 items','QR code download','Veg / non-veg tags','menuqr.in/[yourname]']} btnClass="btn-plan-outline" onClick={() => navigate('/auth?mode=signup')} btnText="Get started" />
+          <PricingCard name="Free" price="₹0" period="forever" features={['1 menu, up to 30 items','QR code download','Veg / non-veg tags','menufy.in/[yourname]']} btnClass="btn-plan-outline" onClick={() => navigate('/auth?mode=signup')} btnText="Get started" />
           <PricingCard featured name="Pro" price="₹499" period="per month" features={['Unlimited items & sections','Table QR packs (PDF)','Analytics dashboard','Custom domain','5 menu themes','Priority support']} btnClass="btn-plan-white" onClick={() => navigate('/auth?mode=signup')} btnText="Start free trial" />
           <PricingCard name="Agency" price="₹1,999" period="per month" features={['10 restaurants','White-label branding','Bulk QR PDF export','Dedicated account manager','API access']} btnClass="btn-plan-outline" onClick={() => navigate('/auth?mode=signup')} btnText="Contact sales" />
         </div>
       </section>
 
       <footer className="footer">
-        <div className="footer-logo">MenuQR</div>
+        <div className="footer-logo">Menuify</div>
         <div className="footer-note">Built for Indian restaurants · Made with care</div>
-        <div style={{ fontSize: 13, color: 'var(--ink-faint)' }}>© 2026 MenuQR</div>
+        <div style={{ fontSize: 13, color: 'var(--ink-faint)' }}>© 2026 Menuify</div>
       </footer>
     </div>
   );
