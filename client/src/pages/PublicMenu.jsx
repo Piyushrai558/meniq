@@ -111,7 +111,7 @@ export default function PublicMenu() {
       {/* FOOTER */}
       <div className="pub-footer">
         <p>Digital menu powered by</p>
-        <a href="/">MenuQR — Create your free menu →</a>
+        <a href="/">Menuify — Create your free menu →</a>
       </div>
     </div>
   );

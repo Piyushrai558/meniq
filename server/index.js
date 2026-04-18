@@ -40,7 +40,7 @@ if (process.env.NODE_ENV === 'production') {
 app.listen(PORT, () => {
   console.log(`
 ╔══════════════════════════════════════════╗
-║         🍽  MenuQR Server Running        ║
+║         🍽  Menuify Server Running        ║
 ╠══════════════════════════════════════════╣
 ║  Local:   http://localhost:${PORT}
 ║  API:     http://localhost:${PORT}/api

@@ -65,7 +65,7 @@ export default function UpgradeModal({ open, onClose }) {
         key:         order.key_id,
         amount:      order.amount,
         currency:    order.currency,
-        name:        'MenuQR',
+        name:        'Menuify',
         description: order.plan_name,
         order_id:    order.order_id,
         prefill:     { email: user?.email, name: user?.name },

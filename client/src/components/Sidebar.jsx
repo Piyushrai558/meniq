@@ -35,7 +35,7 @@ export default function Sidebar() {
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-logo">MenuQR</div>
+      <div className="sidebar-logo">Menuify</div>
       <nav className="sidebar-nav">
         {items.map(item => (
           <div

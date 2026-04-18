@@ -2,7 +2,7 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-const DB_PATH = process.env.DB_PATH || './db/menuqr.db';
+const DB_PATH = process.env.DB_PATH || './db/menuify.db';
 
 function getDb() {
   const fullPath = path.resolve(__dirname, '..', DB_PATH);

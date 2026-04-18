@@ -238,7 +238,7 @@ export default function Auth() {
 function LeftPanel() {
   return (
     <div className="auth-left">
-      <div className="auth-left-logo">MenuQR</div>
+      <div className="auth-left-logo">Menuify</div>
       <div className="auth-left-content">
         <h2>One QR code.<br />Endless possibilities.</h2>
         <p>Join hundreds of restaurants that have said goodbye to paper menus.</p>
