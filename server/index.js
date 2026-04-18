@@ -14,8 +14,6 @@ const { initDb } = require('./database');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-initDb();
-
 app.use(cors());
 app.use(express.json());
 
@@ -37,8 +35,10 @@ if (process.env.NODE_ENV === 'production') {
   app.get('*', (_req, res) => res.sendFile(path.join(clientBuild, 'index.html')));
 }
 
-app.listen(PORT, () => {
-  console.log(`
+initDb()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`
 ╔══════════════════════════════════════════╗
 ║         🍽  Menuify Server Running        ║
 ╠══════════════════════════════════════════╣
@@ -46,4 +46,9 @@ app.listen(PORT, () => {
 ║  API:     http://localhost:${PORT}/api
 ╚══════════════════════════════════════════╝
 `);
-});
+    });
+  })
+  .catch(err => {
+    console.error('❌ Failed to initialize database:', err.message);
+    process.exit(1);
+  });
