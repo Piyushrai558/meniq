@@ -79,7 +79,12 @@ export default function PublicMenu() {
               <div className="pub-items">
                 {visibleItems.map(item => (
                   <div className="pub-item" key={item.id}>
-                    <div className="pub-item-img">{item.emoji || (item.type === 'nonveg' ? '🍗' : '🥦')}</div>
+                    <div className="pub-item-img">
+                      {item.image_url
+                        ? <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }} />
+                        : item.emoji || (item.type === 'nonveg' ? '🍗' : '🥦')
+                      }
+                    </div>
                     <div className="pub-item-body">
                       <div className="pub-item-name">
                         <span className="accent-dot" style={{ background: item.type === 'nonveg' ? 'var(--accent)' : 'var(--green)' }} />
