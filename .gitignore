@@ -1,1 +1,9 @@
 node_modules
+client/node_modules
+client/dist
+db/
+uploads/
+.env
+.env.production
+package-lock.json
+client/package-lock.json

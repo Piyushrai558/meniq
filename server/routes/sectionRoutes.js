@@ -4,6 +4,15 @@ const { authMiddleware } = require('../auth');
 
 const router = express.Router();
 
+const FREE_ITEM_LIMIT = 15;
+
+function getUserPlan(db, userId) {
+  const u = db.prepare('SELECT plan, plan_expires_at FROM users WHERE id = ?').get(userId);
+  if (!u || !u.plan || u.plan === 'free') return 'free';
+  if (u.plan_expires_at && new Date(u.plan_expires_at) < new Date()) return 'free';
+  return u.plan;
+}
+
 router.post('/', authMiddleware, (req, res) => {
   const { menu_id, name } = req.body;
   if (!menu_id || !name) return res.status(400).json({ error: 'menu_id and name required' });
@@ -37,22 +46,47 @@ router.delete('/:id', authMiddleware, (req, res) => {
   try {
     const section = db.prepare('SELECT s.* FROM sections s JOIN menus m ON s.menu_id = m.id WHERE s.id = ? AND m.user_id = ?').get(req.params.id, req.user.id);
     if (!section) return res.status(404).json({ error: 'Section not found' });
-    db.prepare('DELETE FROM sections WHERE  id = ?').run(section.id);
+    db.prepare('DELETE FROM sections WHERE id = ?').run(section.id);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
   finally { db.close(); }
 });
 
-// Items
+// ── Items ─────────────────────────────────────────────────────────────────────
 router.post('/items', authMiddleware, (req, res) => {
-  const { section_id, name, price, description, type, emoji, is_bestseller, is_spicy } = req.body;
+  const { section_id, name, price, description, type, emoji, is_bestseller, is_spicy, image_url } = req.body;
   if (!section_id || !name) return res.status(400).json({ error: 'section_id and name required' });
+
   const db = getDb();
   try {
-    const section = db.prepare('SELECT s.* FROM sections s JOIN menus m ON s.menu_id = m.id WHERE s.id = ? AND m.user_id = ?').get(section_id, req.user.id);
+    const section = db.prepare(
+      'SELECT s.*, m.id as menu_id FROM sections s JOIN menus m ON s.menu_id = m.id WHERE s.id = ? AND m.user_id = ?'
+    ).get(section_id, req.user.id);
     if (!section) return res.status(404).json({ error: 'Section not found' });
+
+    // Enforce free-plan item limit across the whole menu
+    const plan = getUserPlan(db, req.user.id);
+    if (plan === 'free') {
+      const totalItems = db.prepare(
+        'SELECT COUNT(*) as c FROM items i JOIN sections s ON i.section_id = s.id WHERE s.menu_id = ?'
+      ).get(section.menu_id).c;
+      if (totalItems >= FREE_ITEM_LIMIT) {
+        return res.status(403).json({
+          error: `Free plan allows up to ${FREE_ITEM_LIMIT} items per menu. Upgrade to add more.`,
+          upgrade_required: true,
+        });
+      }
+    }
+
     const max = db.prepare('SELECT MAX(sort_order) as m FROM items WHERE section_id = ?').get(section_id);
-    const result = db.prepare('INSERT INTO items (section_id, name, price, description, type, emoji, is_bestseller, is_spicy, sort_order) VALUES (?,?,?,?,?,?,?,?,?)').run(section_id, name, price || 0, description || '', type || 'veg', emoji || (type === 'nonveg' ? '🍗' : '🥦'), is_bestseller ? 1 : 0, is_spicy ? 1 : 0, (max.m || 0) + 1);
+    const result = db.prepare(
+      'INSERT INTO items (section_id, name, price, description, type, emoji, image_url, is_bestseller, is_spicy, sort_order) VALUES (?,?,?,?,?,?,?,?,?,?)'
+    ).run(
+      section_id, name, price || 0, description || '',
+      type || 'veg', emoji || (type === 'nonveg' ? '🍗' : '🥦'),
+      image_url || '',
+      is_bestseller ? 1 : 0, is_spicy ? 1 : 0, (max.m || 0) + 1
+    );
     const item = db.prepare('SELECT * FROM items WHERE id = ?').get(result.lastInsertRowid);
     db.prepare('UPDATE menus SET updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(section.menu_id);
     res.status(201).json({ item });
@@ -61,16 +95,22 @@ router.post('/items', authMiddleware, (req, res) => {
 });
 
 router.put('/items/:id', authMiddleware, (req, res) => {
-  const { name, price, description, type, emoji, is_active, is_bestseller, is_spicy, sort_order } = req.body;
+  const { name, price, description, type, emoji, image_url, is_active, is_bestseller, is_spicy, sort_order } = req.body;
   const db = getDb();
   try {
-    const item = db.prepare('SELECT i.* FROM items i JOIN sections s ON i.section_id = s.id JOIN menus m ON s.menu_id = m.id WHERE i.id = ? AND m.user_id = ?').get(req.params.id, req.user.id);
+    const item = db.prepare(
+      'SELECT i.* FROM items i JOIN sections s ON i.section_id = s.id JOIN menus m ON s.menu_id = m.id WHERE i.id = ? AND m.user_id = ?'
+    ).get(req.params.id, req.user.id);
     if (!item) return res.status(404).json({ error: 'Item not found' });
-    db.prepare('UPDATE items SET name=?, price=?, description=?, type=?, emoji=?, is_active=?, is_bestseller=?, is_spicy=?, sort_order=? WHERE id=?').run(
-      name || item.name, price ?? item.price, description ?? item.description, type || item.type, emoji || item.emoji,
-      is_active !== undefined ? (is_active ? 1 : 0) : item.is_active,
+    db.prepare(
+      'UPDATE items SET name=?, price=?, description=?, type=?, emoji=?, image_url=?, is_active=?, is_bestseller=?, is_spicy=?, sort_order=? WHERE id=?'
+    ).run(
+      name || item.name, price ?? item.price, description ?? item.description,
+      type || item.type, emoji || item.emoji,
+      image_url !== undefined ? image_url : item.image_url,
+      is_active  !== undefined ? (is_active  ? 1 : 0) : item.is_active,
       is_bestseller !== undefined ? (is_bestseller ? 1 : 0) : item.is_bestseller,
-      is_spicy !== undefined ? (is_spicy ? 1 : 0) : item.is_spicy,
+      is_spicy   !== undefined ? (is_spicy   ? 1 : 0) : item.is_spicy,
       sort_order ?? item.sort_order, item.id
     );
     const updated = db.prepare('SELECT * FROM items WHERE id = ?').get(item.id);
@@ -82,7 +122,9 @@ router.put('/items/:id', authMiddleware, (req, res) => {
 router.delete('/items/:id', authMiddleware, (req, res) => {
   const db = getDb();
   try {
-    const item = db.prepare('SELECT i.* FROM items i JOIN sections s ON i.section_id = s.id JOIN menus m ON s.menu_id = m.id WHERE i.id = ? AND m.user_id = ?').get(req.params.id, req.user.id);
+    const item = db.prepare(
+      'SELECT i.* FROM items i JOIN sections s ON i.section_id = s.id JOIN menus m ON s.menu_id = m.id WHERE i.id = ? AND m.user_id = ?'
+    ).get(req.params.id, req.user.id);
     if (!item) return res.status(404).json({ error: 'Item not found' });
     db.prepare('DELETE FROM items WHERE id = ?').run(item.id);
     res.json({ success: true });

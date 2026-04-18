@@ -4,6 +4,8 @@ import Landing from './pages/Landing';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import Editor from './pages/Editor';
+import Analytics from './pages/Analytics';
+import Settings from './pages/Settings';
 import PublicMenu from './pages/PublicMenu';
 import Toast from './components/Toast';
 import { useState } from 'react';
@@ -31,6 +33,8 @@ export default function App() {
         <Route path="/auth" element={<Auth />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/editor/:menuId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         <Route path="/menu/:slug" element={<PublicMenu />} />
       </Routes>
       <Toast message={toast.msg} visible={toast.visible} />
