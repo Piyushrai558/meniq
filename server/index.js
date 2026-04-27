@@ -36,14 +36,15 @@ if (process.env.NODE_ENV === 'production') {
   app.get('*', (_req, res) => res.sendFile(path.join(clientBuild, 'index.html')));
 }
 
-if (!process.env.DATABASE_URL) {
-  console.error('❌ DATABASE_URL is not set. In Railway: app service → Variables → reference Postgres.DATABASE_URL');
+if (!process.env.DATABASE_URL && !process.env.PGHOST) {
+  console.error('❌ No database config found. Set DATABASE_URL or add PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE.');
   process.exit(1);
 }
 
-// Log masked URL so we can confirm the right value is injected
-const dbUrlMasked = process.env.DATABASE_URL.replace(/:([^@]+)@/, ':***@');
-console.log('🔌 Connecting to:', dbUrlMasked);
+const dbTarget = process.env.DATABASE_URL
+  ? process.env.DATABASE_URL.replace(/:([^@]+)@/, ':***@')
+  : `${process.env.PGUSER}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.PGDATABASE}`;
+console.log('🔌 Connecting to:', dbTarget);
 
 initDb()
   .then(() => {

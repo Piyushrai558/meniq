@@ -1,9 +1,16 @@
 const { Pool } = require('pg');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+// Build pool config — accepts either DATABASE_URL or individual PG* vars
+// (Railway exposes PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE automatically)
+const poolConfig = {
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
+};
+if (process.env.DATABASE_URL) {
+  poolConfig.connectionString = process.env.DATABASE_URL;
+}
+// If no DATABASE_URL, pg automatically reads PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE
+
+const pool = new Pool(poolConfig);
 
 // Simple query helper
 async function query(sql, params) {
