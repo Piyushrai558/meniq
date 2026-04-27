@@ -5,5 +5,3 @@ db/
 uploads/
 .env
 .env.production
-package-lock.json
-client/package-lock.json
