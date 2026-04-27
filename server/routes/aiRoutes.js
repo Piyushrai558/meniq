@@ -1,6 +1,5 @@
 const express = require('express');
 const multer  = require('multer');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { query } = require('../database');
 const { authMiddleware } = require('../auth');
 
@@ -15,10 +14,42 @@ const upload = multer({
   },
 });
 
-function getClient() {
-  const key = process.env.GOOGLE_AI_KEY;
-  if (!key || key.includes('PASTE') || key.length < 10) return null;
-  return new GoogleGenerativeAI(key);
+// Direct REST call — avoids SDK version/model-name issues
+async function callGemini(base64, mimeType) {
+  const apiKey = process.env.GOOGLE_AI_KEY;
+  // Try models in order until one works
+  const models = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro-vision'];
+
+  for (const model of models) {
+    const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
+    const body = {
+      contents: [{
+        parts: [
+          { text: SCAN_PROMPT },
+          { inlineData: { mimeType, data: base64 } },
+        ],
+      }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
+    };
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (res.status === 404) continue; // try next model
+
+    const data = await res.json();
+    if (!res.ok) {
+      const msg = data?.error?.message || JSON.stringify(data);
+      throw new Error(msg);
+    }
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    return text;
+  }
+
+  throw new Error('No Gemini model available. Check your GOOGLE_AI_KEY at aistudio.google.com/app/apikey');
 }
 
 const SCAN_PROMPT = `You are a menu digitization assistant. Analyze this restaurant menu image carefully.
@@ -47,37 +78,29 @@ Output format:
 Rules:
 - "type" must be exactly one of: "veg", "nonveg", "egg"
 - Infer type from green/red dot symbols common on Indian menus, or item name
-- "price" is a plain number (no ₹ or Rs). If the menu shows Half/Full prices, use the Full price. Use 0 if not readable
+- "price" is a plain number (no currency symbol). If menu shows Half/Full prices, use the Full price. Use 0 if not readable
 - Pick a fitting food emoji for each item
 - If items have no section headers, group them logically (Starters, Mains, Drinks, etc.)
-- Preserve the original item names exactly as printed
+- Preserve original item names exactly as printed
 - Return ONLY the JSON object, nothing else`;
 
 // ── POST /api/ai/scan-menu ────────────────────────────────────────────────────
 router.post('/scan-menu', authMiddleware, upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'Image file is required' });
 
-  const client = getClient();
-  if (!client) {
+  const apiKey = process.env.GOOGLE_AI_KEY;
+  if (!apiKey || apiKey.includes('PASTE') || apiKey.length < 10) {
     return res.status(503).json({
-      error: 'AI scanning is not configured. Add GOOGLE_AI_KEY to Railway environment variables. Get a free key at aistudio.google.com/app/apikey',
+      error: 'AI scanning not configured. Add GOOGLE_AI_KEY in Railway variables. Get a free key at aistudio.google.com/app/apikey',
     });
   }
 
-  const base64    = req.file.buffer.toString('base64');
-  const mediaType = req.file.mimetype;
-
   try {
-    const model = client.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+    const base64   = req.file.buffer.toString('base64');
+    const mimeType = req.file.mimetype;
 
-    const result = await model.generateContent([
-      SCAN_PROMPT,
-      { inlineData: { data: base64, mimeType: mediaType } },
-    ]);
+    const text = await callGemini(base64, mimeType);
 
-    const text = result.response.text();
-
-    // Extract JSON block (Gemini sometimes wraps in markdown fences)
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       return res.status(422).json({
@@ -88,7 +111,7 @@ router.post('/scan-menu', authMiddleware, upload.single('image'), async (req, re
     const menuData = JSON.parse(jsonMatch[0]);
 
     if (!menuData.sections || !Array.isArray(menuData.sections)) {
-      return res.status(422).json({ error: 'No menu sections found in image. Please try a clearer photo.' });
+      return res.status(422).json({ error: 'No menu sections found. Please try a clearer photo.' });
     }
 
     menuData.sections = menuData.sections.map(s => ({
