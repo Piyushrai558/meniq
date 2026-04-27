@@ -36,6 +36,13 @@ if (process.env.NODE_ENV === 'production') {
   app.get('*', (_req, res) => res.sendFile(path.join(clientBuild, 'index.html')));
 }
 
+// Validate DATABASE_URL before attempting connection
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL environment variable is not set.');
+  console.error('   → In Railway: go to your app service → Variables → add a reference to the PostgreSQL DATABASE_URL');
+  process.exit(1);
+}
+
 initDb()
   .then(() => {
     app.listen(PORT, () => {
@@ -50,6 +57,15 @@ initDb()
     });
   })
   .catch(err => {
-    console.error('❌ Failed to initialize database:', err.message);
+    console.error('❌ Failed to initialize database:');
+    console.error('   Code   :', err.code    || '—');
+    console.error('   Message:', err.message || String(err));
+    console.error('   Detail :', err.detail  || '—');
+    if (err.code === 'ECONNREFUSED') {
+      console.error('   → Cannot reach PostgreSQL. Check DATABASE_URL is correct and the Postgres service is running.');
+    }
+    if (err.code === 'SELF_SIGNED_CERT_IN_CHAIN' || err.code === 'DEPTH_ZERO_SELF_SIGNED_CERT') {
+      console.error('   → SSL certificate error. Set NODE_ENV=production so SSL is enabled.');
+    }
     process.exit(1);
   });
