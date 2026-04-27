@@ -14,8 +14,6 @@ const { initDb } = require('./database');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-initDb();
-
 app.use(cors());
 app.use(express.json());
 
@@ -28,6 +26,7 @@ app.use('/api/menus',    require('./routes/menuRoutes'));
 app.use('/api/sections', require('./routes/sectionRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/upload',   require('./routes/uploadRoutes'));
+app.use('/api/ai',       require('./routes/aiRoutes'));
 app.use('/api',          require('./routes/publicRoutes'));
 
 // Serve React build in production
@@ -37,8 +36,10 @@ if (process.env.NODE_ENV === 'production') {
   app.get('*', (_req, res) => res.sendFile(path.join(clientBuild, 'index.html')));
 }
 
-app.listen(PORT, () => {
-  console.log(`
+initDb()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`
 ╔══════════════════════════════════════════╗
 ║         🍽  Menuify Server Running        ║
 ╠══════════════════════════════════════════╣
@@ -46,4 +47,9 @@ app.listen(PORT, () => {
 ║  API:     http://localhost:${PORT}/api
 ╚══════════════════════════════════════════╝
 `);
-});
+    });
+  })
+  .catch(err => {
+    console.error('❌ Failed to initialize database:', err.message);
+    process.exit(1);
+  });

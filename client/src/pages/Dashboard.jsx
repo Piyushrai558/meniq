@@ -119,6 +119,9 @@ export default function Dashboard() {
                 ⚡ Upgrade
               </button>
             )}
+            <button className="btn-ai" onClick={() => navigate("/scan-menu")}>
+              ✨ Scan with AI
+            </button>
             <button className="btn-primary" onClick={() => {
               if (atLimit) { setUpgradeOpen(true); return; }
               setModalOpen(true);
@@ -133,6 +136,17 @@ export default function Dashboard() {
           <StatCard label="Views this week"  value={analytics.views_this_week ?? "—"} sub="QR scans" />
           <StatCard label="Active menus"     value={menus.length}                      sub={`of ${menuLimit === Infinity ? "∞" : menuLimit} on ${PLAN_LABELS[plan]}`} />
           <StatCard label="Total views"      value={analytics.views_total ?? "—"}     sub="all time" />
+        </div>
+
+        {/* AI scan promo card */}
+        <div className="ai-promo-card" onClick={() => navigate("/scan-menu")} role="button" tabIndex={0}
+          onKeyDown={e => e.key === 'Enter' && navigate("/scan-menu")}>
+          <div className="ai-promo-icon">✨</div>
+          <div className="ai-promo-text">
+            <strong>New: Scan your physical menu with AI</strong>
+            <span>Upload a photo → AI extracts every item, price & section → Digital menu ready in seconds.</span>
+          </div>
+          <div className="ai-promo-arrow">→</div>
         </div>
 
         {/* Free plan limit warning */}

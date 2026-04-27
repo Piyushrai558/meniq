@@ -1,16 +1,11 @@
 const express = require('express');
 const QRCode = require('qrcode');
 const os = require('os');
-const { getDb } = require('../database');
+const { query } = require('../database');
 const { authMiddleware } = require('../auth');
 
 const router = express.Router();
 
-// Returns the best base URL for QR codes.
-// - If BASE_URL is set in .env, use that (works for any deployment).
-// - If the request came in on localhost (dev), swap to the machine's LAN IP
-//   so phones on the same Wi-Fi can actually open the link.
-// - Otherwise (production with a real domain) use the Host header as-is.
 function getBaseUrl(req) {
   if (process.env.BASE_URL) return process.env.BASE_URL.replace(/\/$/, '');
 
@@ -32,18 +27,27 @@ function getBaseUrl(req) {
   return `${req.protocol}://${host}`;
 }
 
-router.get('/menu/:slug', (req, res) => {
-  const db = getDb();
+router.get('/menu/:slug', async (req, res) => {
   try {
-    const menu = db.prepare('SELECT * FROM menus WHERE slug = ? AND is_active = 1').get(req.params.slug);
+    const menuResult = await query('SELECT * FROM menus WHERE slug = $1 AND is_active = 1', [req.params.slug]);
+    const menu = menuResult.rows[0];
     if (!menu) return res.status(404).json({ error: 'Menu not found' });
-    const sections = db.prepare('SELECT * FROM sections WHERE menu_id = ? ORDER BY sort_order').all(menu.id);
-    for (const s of sections) s.items = db.prepare('SELECT * FROM items WHERE section_id = ? AND is_active = 1 ORDER BY sort_order').all(s.id);
+
+    const sectionsResult = await query('SELECT * FROM sections WHERE menu_id = $1 ORDER BY sort_order', [menu.id]);
+    const sections = sectionsResult.rows;
+    for (const s of sections) {
+      const itemsResult = await query('SELECT * FROM items WHERE section_id = $1 AND is_active = 1 ORDER BY sort_order', [s.id]);
+      s.items = itemsResult.rows;
+    }
     menu.sections = sections;
-    db.prepare('INSERT INTO analytics (menu_id, event_type, ip_address, user_agent) VALUES (?, ?, ?, ?)').run(menu.id, 'menu_view', req.ip, req.get('user-agent'));
+
+    await query(
+      'INSERT INTO analytics (menu_id, event_type, ip_address, user_agent) VALUES ($1, $2, $3, $4)',
+      [menu.id, 'menu_view', req.ip, req.get('user-agent')]
+    );
+
     res.json({ menu });
   } catch (err) { res.status(500).json({ error: err.message }); }
-  finally { db.close(); }
 });
 
 router.get('/qr/:slug', async (req, res) => {
@@ -57,18 +61,36 @@ router.get('/qr/:slug', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.get('/analytics/:menuId', authMiddleware, (req, res) => {
-  const db = getDb();
+router.get('/analytics/:menuId', authMiddleware, async (req, res) => {
   try {
-    const menu = db.prepare('SELECT * FROM menus WHERE id = ? AND user_id = ?').get(req.params.menuId, req.user.id);
+    const menuResult = await query('SELECT * FROM menus WHERE id = $1 AND user_id = $2', [req.params.menuId, req.user.id]);
+    const menu = menuResult.rows[0];
     if (!menu) return res.status(404).json({ error: 'Menu not found' });
-    const today = db.prepare("SELECT COUNT(*) as count FROM analytics WHERE menu_id = ? AND event_type = 'menu_view' AND date(created_at) = date('now')").get(menu.id);
-    const week = db.prepare("SELECT COUNT(*) as count FROM analytics WHERE menu_id = ? AND event_type = 'menu_view' AND created_at >= datetime('now', '-7 days')").get(menu.id);
-    const total = db.prepare("SELECT COUNT(*) as count FROM analytics WHERE menu_id = ? AND event_type = 'menu_view'").get(menu.id);
-    const daily = db.prepare("SELECT date(created_at) as date, COUNT(*) as views FROM analytics WHERE menu_id = ? AND event_type = 'menu_view' AND created_at >= datetime('now', '-30 days') GROUP BY date(created_at) ORDER BY date").all(menu.id);
-    res.json({ views_today: today.count, views_this_week: week.count, views_total: total.count, daily_views: daily });
+
+    const today = await query(
+      "SELECT COUNT(*) as count FROM analytics WHERE menu_id = $1 AND event_type = 'menu_view' AND created_at::date = CURRENT_DATE",
+      [menu.id]
+    );
+    const week = await query(
+      "SELECT COUNT(*) as count FROM analytics WHERE menu_id = $1 AND event_type = 'menu_view' AND created_at >= NOW() - INTERVAL '7 days'",
+      [menu.id]
+    );
+    const total = await query(
+      "SELECT COUNT(*) as count FROM analytics WHERE menu_id = $1 AND event_type = 'menu_view'",
+      [menu.id]
+    );
+    const daily = await query(
+      "SELECT created_at::date as date, COUNT(*) as views FROM analytics WHERE menu_id = $1 AND event_type = 'menu_view' AND created_at >= NOW() - INTERVAL '30 days' GROUP BY created_at::date ORDER BY date",
+      [menu.id]
+    );
+
+    res.json({
+      views_today: parseInt(today.rows[0].count),
+      views_this_week: parseInt(week.rows[0].count),
+      views_total: parseInt(total.rows[0].count),
+      daily_views: daily.rows,
+    });
   } catch (err) { res.status(500).json({ error: err.message }); }
-  finally { db.close(); }
 });
 
 module.exports = router;

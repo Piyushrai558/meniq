@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Editor from './pages/Editor';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
+import ScanMenu from './pages/ScanMenu';
 import PublicMenu from './pages/PublicMenu';
 import Toast from './components/Toast';
 import { useState } from 'react';
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="/editor/:menuId" element={<ProtectedRoute><Editor /></ProtectedRoute>} />
         <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/scan-menu" element={<ProtectedRoute><ScanMenu /></ProtectedRoute>} />
         <Route path="/menu/:slug" element={<PublicMenu />} />
       </Routes>
       <Toast message={toast.msg} visible={toast.visible} />

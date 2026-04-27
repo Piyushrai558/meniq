@@ -1,17 +1,16 @@
 const express = require('express');
 const crypto = require('crypto');
 const Razorpay = require('razorpay');
-const { getDb } = require('../database');
+const { query } = require('../database');
 const { authMiddleware } = require('../auth');
 
 const router = express.Router();
 
 const PLANS = {
   basic: { amount: 29900, label: 'Basic Plan', menu_limit: 3 },
-  pro:   { amount: 69900, label: 'Pro Plan',   menu_limit: -1 }, // -1 = unlimited
+  pro:   { amount: 69900, label: 'Pro Plan',   menu_limit: -1 },
 };
 
-// Real keys look like rzp_test_XXXXX / rzp_live_XXXXX (no "PASTE" placeholder)
 function razorpayConfigured() {
   const id  = process.env.RAZORPAY_KEY_ID     || '';
   const sec = process.env.RAZORPAY_KEY_SECRET || '';
@@ -35,15 +34,10 @@ function getRazorpay() {
   });
 }
 
-// Extract a readable message from Razorpay SDK errors (they use err.error.description)
 function razorpayErrMsg(err) {
   return err?.error?.description || err?.description || err?.message || 'Payment gateway error';
 }
 
-// ── DEV-MODE PAYMENT SIMULATION ───────────────────────────────────────────────
-// When Razorpay is not configured (placeholder keys), we allow a simulated
-// payment in development so the plan upgrade flow can be tested end-to-end
-// without real money or a live Razorpay account.
 const isDev = process.env.NODE_ENV !== 'production';
 
 function effectivePlan(user) {
@@ -80,7 +74,6 @@ router.post('/create-order', authMiddleware, async (req, res) => {
   const { plan } = req.body;
   if (!PLANS[plan]) return res.status(400).json({ error: 'Invalid plan selected' });
 
-  // ── Dev simulation: skip Razorpay when keys are placeholder ──────────────
   if (isDev && !razorpayConfigured()) {
     return res.json({
       order_id:   `dev_order_${Date.now()}`,
@@ -88,7 +81,7 @@ router.post('/create-order', authMiddleware, async (req, res) => {
       currency:   'INR',
       key_id:     'rzp_test_DEV_SIMULATION',
       plan_name:  PLANS[plan].label,
-      dev_simulation: true,   // frontend detects this and skips Razorpay checkout
+      dev_simulation: true,
     });
   }
 
@@ -101,11 +94,10 @@ router.post('/create-order', authMiddleware, async (req, res) => {
       notes:    { user_id: String(req.user.id), plan },
     });
 
-    const db = getDb();
-    db.prepare(
-      'INSERT INTO payments (user_id, razorpay_order_id, plan, amount, status) VALUES (?, ?, ?, ?, ?)'
-    ).run(req.user.id, order.id, plan, PLANS[plan].amount, 'pending');
-    db.close();
+    await query(
+      'INSERT INTO payments (user_id, razorpay_order_id, plan, amount, status) VALUES ($1, $2, $3, $4, $5)',
+      [req.user.id, order.id, plan, PLANS[plan].amount, 'pending']
+    );
 
     res.json({
       order_id:  order.id,
@@ -120,21 +112,19 @@ router.post('/create-order', authMiddleware, async (req, res) => {
 });
 
 // ── POST /api/payments/verify ─────────────────────────────────────────────────
-router.post('/verify', authMiddleware, (req, res) => {
+router.post('/verify', authMiddleware, async (req, res) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature, plan, dev_simulation } = req.body;
 
   if (!PLANS[plan]) return res.status(400).json({ error: 'Invalid plan' });
 
   // ── Dev simulation: skip HMAC check ──────────────────────────────────────
   if (isDev && dev_simulation && razorpay_order_id?.startsWith('dev_order_')) {
-    const db = getDb();
     try {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30);
-      db.prepare('UPDATE users SET plan = ?, plan_expires_at = ? WHERE id = ?').run(
-        plan, expiresAt.toISOString(), req.user.id
-      );
-      const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+      await query('UPDATE users SET plan = $1, plan_expires_at = $2 WHERE id = $3', [plan, expiresAt, req.user.id]);
+      const userResult = await query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+      const user = userResult.rows[0];
       console.log(`[payments] DEV SIMULATION: upgraded user ${req.user.id} to ${plan}`);
       return res.json({
         success: true,
@@ -148,8 +138,6 @@ router.post('/verify', authMiddleware, (req, res) => {
       });
     } catch (err) {
       return res.status(500).json({ error: err.message });
-    } finally {
-      db.close();
     }
   }
 
@@ -164,19 +152,18 @@ router.post('/verify', authMiddleware, (req, res) => {
   if (expected !== razorpay_signature)
     return res.status(400).json({ error: 'Payment verification failed' });
 
-  const db = getDb();
   try {
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30); // 30-day subscription
+    expiresAt.setDate(expiresAt.getDate() + 30);
 
-    db.prepare('UPDATE users SET plan = ?, plan_expires_at = ? WHERE id = ?').run(
-      plan, expiresAt.toISOString(), req.user.id
+    await query('UPDATE users SET plan = $1, plan_expires_at = $2 WHERE id = $3', [plan, expiresAt, req.user.id]);
+    await query(
+      'UPDATE payments SET razorpay_payment_id = $1, status = $2 WHERE razorpay_order_id = $3',
+      [razorpay_payment_id, 'paid', razorpay_order_id]
     );
-    db.prepare(
-      'UPDATE payments SET razorpay_payment_id = ?, status = ? WHERE razorpay_order_id = ?'
-    ).run(razorpay_payment_id, 'paid', razorpay_order_id);
 
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+    const userResult = await query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const user = userResult.rows[0];
     res.json({
       success: true,
       user: {
@@ -189,8 +176,6 @@ router.post('/verify', authMiddleware, (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
-  } finally {
-    db.close();
   }
 });
 
