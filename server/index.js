@@ -36,20 +36,25 @@ if (process.env.NODE_ENV === 'production') {
   app.get('*', (_req, res) => res.sendFile(path.join(clientBuild, 'index.html')));
 }
 
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL is not set. In Railway: app service → Variables → reference Postgres.DATABASE_URL');
+  process.exit(1);
+}
+
+// Log masked URL so we can confirm the right value is injected
+const dbUrlMasked = process.env.DATABASE_URL.replace(/:([^@]+)@/, ':***@');
+console.log('🔌 Connecting to:', dbUrlMasked);
+
 initDb()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`
-╔══════════════════════════════════════════╗
-║         🍽  Menuify Server Running        ║
-╠══════════════════════════════════════════╣
-║  Local:   http://localhost:${PORT}
-║  API:     http://localhost:${PORT}/api
-╚══════════════════════════════════════════╝
-`);
+      console.log(`✅ Menuify running on port ${PORT}`);
     });
   })
   .catch(err => {
-    console.error('❌ Failed to initialize database:', err.message);
+    console.error('❌ Database init failed');
+    console.error('   code   :', err.code    || '(none)');
+    console.error('   message:', err.message || String(err));
+    console.error('   detail :', err.detail  || '(none)');
     process.exit(1);
   });
