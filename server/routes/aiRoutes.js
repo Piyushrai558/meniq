@@ -1,12 +1,11 @@
 const express = require('express');
 const multer  = require('multer');
-const Anthropic = require('@anthropic-ai/sdk');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { query } = require('../database');
 const { authMiddleware } = require('../auth');
 
 const router = express.Router();
 
-// Store image in memory (no disk) — max 5 MB
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
@@ -17,9 +16,9 @@ const upload = multer({
 });
 
 function getClient() {
-  const key = process.env.ANTHROPIC_API_KEY;
+  const key = process.env.GOOGLE_AI_KEY;
   if (!key || key.includes('PASTE') || key.length < 10) return null;
-  return new Anthropic({ apiKey: key });
+  return new GoogleGenerativeAI(key);
 }
 
 const SCAN_PROMPT = `You are a menu digitization assistant. Analyze this restaurant menu image carefully.
@@ -47,12 +46,12 @@ Output format:
 
 Rules:
 - "type" must be exactly one of: "veg", "nonveg", "egg"
-- Infer type from the green/red dot symbols common on Indian menus, item name, or dish type
-- "price" is a plain number (no ₹ or Rs), use 0 if not readable
+- Infer type from green/red dot symbols common on Indian menus, or item name
+- "price" is a plain number (no ₹ or Rs). If the menu shows Half/Full prices, use the Full price. Use 0 if not readable
 - Pick a fitting food emoji for each item
 - If items have no section headers, group them logically (Starters, Mains, Drinks, etc.)
 - Preserve the original item names exactly as printed
-- Return ONLY the JSON object`;
+- Return ONLY the JSON object, nothing else`;
 
 // ── POST /api/ai/scan-menu ────────────────────────────────────────────────────
 router.post('/scan-menu', authMiddleware, upload.single('image'), async (req, res) => {
@@ -61,29 +60,24 @@ router.post('/scan-menu', authMiddleware, upload.single('image'), async (req, re
   const client = getClient();
   if (!client) {
     return res.status(503).json({
-      error: 'AI scanning is not configured. Ask the admin to add ANTHROPIC_API_KEY to environment variables.',
+      error: 'AI scanning is not configured. Add GOOGLE_AI_KEY to Railway environment variables. Get a free key at aistudio.google.com/app/apikey',
     });
   }
 
-  const mediaType = req.file.mimetype; // image/jpeg | image/png | image/webp | image/gif
   const base64    = req.file.buffer.toString('base64');
+  const mediaType = req.file.mimetype;
 
   try {
-    const response = await client.messages.create({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 4096,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-          { type: 'text',  text: SCAN_PROMPT },
-        ],
-      }],
-    });
+    const model = client.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    const text = response.content[0]?.text || '';
+    const result = await model.generateContent([
+      SCAN_PROMPT,
+      { inlineData: { data: base64, mimeType: mediaType } },
+    ]);
 
-    // Extract the JSON block (Claude sometimes wraps in markdown fences)
+    const text = result.response.text();
+
+    // Extract JSON block (Gemini sometimes wraps in markdown fences)
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       return res.status(422).json({
@@ -93,7 +87,6 @@ router.post('/scan-menu', authMiddleware, upload.single('image'), async (req, re
 
     const menuData = JSON.parse(jsonMatch[0]);
 
-    // Sanitise: ensure required fields exist
     if (!menuData.sections || !Array.isArray(menuData.sections)) {
       return res.status(422).json({ error: 'No menu sections found in image. Please try a clearer photo.' });
     }
@@ -120,13 +113,11 @@ router.post('/scan-menu', authMiddleware, upload.single('image'), async (req, re
 });
 
 // ── POST /api/ai/create-from-scan ─────────────────────────────────────────────
-// Creates the full menu + sections + items in the DB from AI scan data
 router.post('/create-from-scan', authMiddleware, async (req, res) => {
   const { menu_name, restaurant_name, sections } = req.body;
   if (!menu_name || !sections || !Array.isArray(sections))
     return res.status(400).json({ error: 'menu_name and sections are required' });
 
-  // Check plan limits
   const planResult = await query('SELECT plan, plan_expires_at FROM users WHERE id = $1', [req.user.id]);
   const u = planResult.rows[0];
   const plan = (!u || !u.plan || u.plan === 'free' ||
