@@ -134,32 +134,50 @@ export default function Auth() {
 
   // ── Reset password screen ──────────────────────────────────────────────────
   if (mode === 'reset') {
+    const hasToken = token && token.length > 10;
     return (
       <div className="auth-page">
         <LeftPanel />
         <div className="auth-right">
           <div className="auth-form-wrap">
             <h3>Set new password</h3>
-            <p>Choose a new password for your account.</p>
-            {error && <div className="auth-error">{error}</div>}
-            {info  && <div className="auth-success">{info}</div>}
-            {!info && (
+            {!hasToken ? (
               <>
-                <div className="form-group">
-                  <label className="form-label">New password</label>
-                  <input type="password" className="form-input" placeholder="At least 6 characters"
-                    value={password} onChange={e => setPassword(e.target.value)} onKeyDown={kd} />
+                <div className="auth-error">
+                  This reset link is invalid or has already been used. Please request a new one.
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Confirm password</label>
-                  <input type="password" className="form-input" placeholder="Repeat password"
-                    value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} onKeyDown={kd} />
-                </div>
-                <button className="btn-auth" onClick={handleSubmit} disabled={submitting}>
-                  {submitting ? 'Saving…' : 'Update password'}
+                <button className="btn-auth" style={{ marginTop: 16 }}
+                  onClick={() => navigate('/auth?mode=forgot')}>
+                  Request new reset link
                 </button>
               </>
+            ) : (
+              <>
+                <p>Choose a new password for your account.</p>
+                {error && <div className="auth-error">{error}</div>}
+                {info  && <div className="auth-success">{info}</div>}
+                {!info && (
+                  <>
+                    <div className="form-group">
+                      <label className="form-label">New password</label>
+                      <input type="password" className="form-input" placeholder="At least 6 characters"
+                        value={password} onChange={e => setPassword(e.target.value)} onKeyDown={kd} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Confirm password</label>
+                      <input type="password" className="form-input" placeholder="Repeat password"
+                        value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} onKeyDown={kd} />
+                    </div>
+                    <button className="btn-auth" onClick={handleSubmit} disabled={submitting}>
+                      {submitting ? 'Saving…' : 'Update password'}
+                    </button>
+                  </>
+                )}
+              </>
             )}
+            <div className="auth-switch">
+              <a onClick={() => navigate('/auth?mode=login')}>← Back to login</a>
+            </div>
           </div>
         </div>
       </div>

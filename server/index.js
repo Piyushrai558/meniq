@@ -26,6 +26,7 @@ app.use('/api/menus',    require('./routes/menuRoutes'));
 app.use('/api/sections', require('./routes/sectionRoutes'));
 app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/api/upload',   require('./routes/uploadRoutes'));
+app.use('/api/ai',       require('./routes/aiRoutes'));
 app.use('/api',          require('./routes/publicRoutes'));
 
 // Serve React build in production

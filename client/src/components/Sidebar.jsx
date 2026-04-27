@@ -10,6 +10,7 @@ export default function Sidebar() {
   const items = [
     { icon: '▦', label: 'Dashboard',   path: '/dashboard' },
     { icon: '✎', label: 'Menu Editor', path: '/editor' },
+    { icon: '✨', label: 'Scan with AI', path: '/scan-menu' },
     { icon: '↗', label: 'Analytics',   path: '/analytics' },
     { icon: '⚙', label: 'Settings',    path: '/settings' },
   ];
